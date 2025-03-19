@@ -1,6 +1,18 @@
 -- SQL Retail Sales Analysis - P1
-CREATE DATABASE sql_project_p2;
 
+-- Topics: 
+	-- Database & Table Management – CREATE DATABASE, CREATE TABLE, ALTER TABLE, DROP TABLE
+	-- Data Insertion & Retrieval – INSERT INTO, SELECT, LIMIT
+    -- Data Cleaning – Handling NULL values with WHERE IS NULL, DELETE
+	-- Filtering Data – WHERE, AND, OR, BETWEEN, IN, LIKE
+	-- Aggregations – COUNT, SUM, AVG, DISTINCT
+	-- Grouping & Ordering – GROUP BY, ORDER BY
+	-- Date & Time Functions – EXTRACT(YEAR | MONTH | HOUR FROM date_column), TO_CHAR()
+	-- Subqueries & Common Table Expressions (CTEs) – WITH ... AS, nested SELECT statements
+	-- Window Functions – RANK() OVER(PARTITION BY ... ORDER BY ...)
+	-- Case Statements – CASE WHEN ... THEN ... END (for shift classification)
+
+CREATE DATABASE sql_project_p1;
 
 -- Create TABLE
 DROP TABLE IF EXISTS retail_sales;
@@ -75,13 +87,20 @@ WHERE
     cogs IS NULL
     OR
     total_sale IS NULL;
+
+-- The table has mistakenly created by wrong column name quantiy instead of quantity, edit the table to change the column name
+
+ALTER TABLE retail_sales
+RENAME COLUMN  quantiy to quantity;
+
+-- Import data, making sure the first row is taken as headers
     
 -- Data Exploration
 
 -- How many sales we have?
 SELECT COUNT(*) as total_sale FROM retail_sales
 
--- How many uniuque customers we have ?
+-- How many unique customers we have ?
 
 SELECT COUNT(DISTINCT customer_id) as total_sale FROM retail_sales
 
@@ -93,8 +112,8 @@ SELECT DISTINCT category FROM retail_sales
 -- Data Analysis & Business Key Problems & Answers
 
 -- My Analysis & Findings
--- Q.1 Write a SQL query to retrieve all columns for sales made on '2022-11-05
--- Q.2 Write a SQL query to retrieve all transactions where the category is 'Clothing' and the quantity sold is more than 10 in the month of Nov-2022
+-- Q.1 Write a SQL query to retrieve all columns for sales made on '2022-11-05'
+-- Q.2 Write a SQL query to retrieve all transactions where the category is 'Clothing' and the quantity sold is more than 2 in the month of Nov-2022
 -- Q.3 Write a SQL query to calculate the total sales (total_sale) for each category.
 -- Q.4 Write a SQL query to find the average age of customers who purchased items from the 'Beauty' category.
 -- Q.5 Write a SQL query to find all transactions where the total_sale is greater than 1000.
@@ -106,7 +125,7 @@ SELECT DISTINCT category FROM retail_sales
 
 
 
- -- Q.1 Write a SQL query to retrieve all columns for sales made on '2022-11-05
+ -- Q.1 Write a SQL query to retrieve all columns for sales made on '2022-11-05'
 
 SELECT *
 FROM retail_sales
@@ -115,16 +134,26 @@ WHERE sale_date = '2022-11-05';
 
 -- Q.2 Write a SQL query to retrieve all transactions where the category is 'Clothing' and the quantity sold is more than 4 in the month of Nov-2022
 
+-- METHOD 1
 SELECT 
-  *
-FROM retail_sales
-WHERE 
-    category = 'Clothing'
-    AND 
-    TO_CHAR(sale_date, 'YYYY-MM') = '2022-11'
-    AND
-    quantity >= 4
+            *
+FROM retail_sales 
+            WHERE category = 'Clothing' 
+	AND
+	TO_CHAR(sale_date, 'YYYY-MM') = '2022-11'
+	AND
+	quantity > 2;
 
+-- METHOD 2
+SELECT 	*
+FROM retail_sales 
+	WHERE category = 'Clothing' 
+	AND
+	Extract(MONTH FROM sale_date) = '11'
+	AND
+            Extract(YEAR FROM sale_date) = '2022'
+	AND
+	quantity > 2;
 
 -- Q.3 Write a SQL query to calculate the total sales (total_sale) for each category.
 
@@ -195,33 +224,51 @@ LIMIT 5
 
 -- Q.9 Write a SQL query to find the number of unique customers who purchased items from each category.
 
-
-SELECT 
-    category,    
-    COUNT(DISTINCT customer_id) as cnt_unique_cs
-FROM retail_sales
-GROUP BY category
-
-
-
--- Q.10 Write a SQL query to create each shift and number of orders (Example Morning <12, Afternoon Between 12 & 17, Evening >17)
-
-WITH hourly_sale
-AS
-(
-SELECT *,
-    CASE
-        WHEN EXTRACT(HOUR FROM sale_time) < 12 THEN 'Morning'
-        WHEN EXTRACT(HOUR FROM sale_time) BETWEEN 12 AND 17 THEN 'Afternoon'
-        ELSE 'Evening'
-    END as shift
-FROM retail_sales
+SELECT
+ customer_id
+FROM (SELECT 
+customer_id,
+count(DISTINCT(category)) as count_of_distinct_categories
+FROM 
+retail_sales
+GROUP BY customer_id 
 )
-SELECT 
-    shift,
-    COUNT(*) as total_orders    
-FROM hourly_sale
-GROUP BY shift
+WHERE count_of_distinct_categories = 3
+
+-- Q.10 Write a SQL query to find the total number of unique customers for each category of items
+SELECT
+	category,
+	count(distinct(customer_id))
+	FROM
+	retail_sales
+	Group by category	
+
+-- Q.11 Write a SQL query to create each shift and number of orders (Example Morning <=12, Afternoon Between 12 & 17, Evening >17)
+-- METHOD 1 : Using CTE
+
+With hourly_sale AS
+( SELECT 
+	*,
+	CASE
+            WHEN Extract( Hour from sale_time) < 12  THEN 'Morning'
+            WHEN EXTRACT(HOUR FROM sale_time) >= 12 AND EXTRACT(HOUR FROM sale_time) < 17   THEN 'Afternoon'
+            ELSE 'Evening'
+            END as shift
+	FROM 
+	retail_sales )
+SELECT shift, count(*) as number_of_orders FROM  hourly_sale Group by shift
+
+-- METHOD 2 : Not using of CTE
+SELECT
+            CASE
+	WHEN Extract( Hour from sale_time) < 12  THEN 'Morning'
+	WHEN EXTRACT(HOUR FROM sale_time) >= 12 AND EXTRACT(HOUR FROM sale_time) < 17   THEN 'Afternoon'
+	ELSE 'Evening'
+	END AS shift,
+	COUNT(*) AS number_of_orders
+FROM retail_sales
+GROUP BY 1;
+
 
 -- End of project
 
